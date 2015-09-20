@@ -32,11 +32,45 @@ static void real_time_delay (int64_t num, int32_t denom);
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
+/*my code starts*/
+static struct list sleep_q;
+struct sleep_thread{
+    int64_t wakeuptime;
+    struct thread *th;
+    struct list_elem elem;
+};
+static void mysleep(int64_t time, struct thread * th){
+    enum intr_level old_level = intr_disable ();
+    struct sleep_thread* node = (struct sleep_thread*)malloc(sizeof(struct sleep_thread));
+    node->wakeuptime = time;
+    node->th = th;
+    list_push_back(&sleep_q, &(node->elem));
+    thread_block();
+    intr_set_level(old_level);
+}
+static void mywakeup(){
+    struct sleep_thread* temp;
+    struct list_elem *e;
+    enum intr_level old_level = intr_disable ();
+    e = list_begin(&sleep_q);
+    for(;e != list_end(&sleep_q);e = list_next(e))
+    {
+        temp = list_entry (e, struct sleep_thread, elem);
+        if(temp->wakeuptime <= timer_ticks()){
+            thread_unblock(temp->th);
+            temp = list_remove(&(temp->elem));
+            continue;
+        }
+    }
+    intr_set_level(old_level);
+}
+
 void
 timer_init (void) 
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init(&sleep_q);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -89,11 +123,17 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
+  //int64_t start = timer_ticks ();
+  enum intr_level old_level;
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  
+  old_level = intr_disable ();
+
+  mysleep(timer_ticks() + ticks , thread_current());
+
+  intr_set_level(old_level);
+  //while (timer_elapsed (start) < ticks) 
+  //  thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +212,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  mywakeup();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
