@@ -84,6 +84,14 @@ static tid_t allocate_tid (void);
 
    It is not safe to call thread_current() until this function
    finishes. */
+bool th_less(struct list_elem *a, struct list_elem *b, void* aux UNUSED){
+    struct thread *t1 = list_entry(a, struct thread, elem);
+    struct thread *t2 = list_entry(b, struct thread, elem);
+    ASSERT (is_thread(t1));
+    printf("name= %s, pri= %d \n",t1->name, t1->priority);
+    return t1->priority > t2->priority;
+}
+
 void
 thread_init (void) 
 {

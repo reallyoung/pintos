@@ -39,12 +39,18 @@ struct sleep_thread{
     struct thread *th;
     struct list_elem elem;
 };
+bool sth_less(struct list_elem *a, struct list_elem *b, void* aux UNUSED){
+    struct sleep_thread *t1 = list_entry(a, struct sleep_thread, elem);
+    struct sleep_thread *t2 = list_entry(b, struct sleep_thread, elem);
+    return t1->th->priority > t2->th->priority;
+}
 static void mysleep(int64_t time, struct thread * th){
     enum intr_level old_level = intr_disable ();
     struct sleep_thread* node = (struct sleep_thread*)malloc(sizeof(struct sleep_thread));
     node->wakeuptime = time;
     node->th = th;
-    list_push_back(&sleep_q, &(node->elem));
+    //ASSERT (!(th != NULL && th->magic == THREAD_MAGIC));
+    list_insert_ordered(&sleep_q, &(node->elem), &sth_less, NULL);
     thread_block();
     intr_set_level(old_level);
 }
