@@ -84,11 +84,12 @@ static tid_t allocate_tid (void);
 
    It is not safe to call thread_current() until this function
    finishes. */
-bool th_less(struct list_elem *a, struct list_elem *b, void* aux UNUSED){
+bool th_less(const struct list_elem *a, const struct list_elem *b, void* aux UNUSED){
     struct thread *t1 = list_entry(a, struct thread, elem);
     struct thread *t2 = list_entry(b, struct thread, elem);
+   // printf("less fuc called\n");
     ASSERT (is_thread(t1));
-    printf("name= %s, pri= %d \n",t1->name, t1->priority);
+   // printf("name= %s, pri= %d \n",t1->name, t1->priority);
     return t1->priority > t2->priority;
 }
 
@@ -253,8 +254,14 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+ // printf("what the\n");
+ // list_push_back (&ready_list, &t->elem);
+ // list_sort(&ready_list, th_less, NULL);
+  list_insert_ordered(&ready_list, &t->elem, th_less, NULL);
   t->status = THREAD_READY;
+  if(thread_current()!=idle_thread  && thread_current()->priority < t->priority )
+    thread_yield();
+
   intr_set_level (old_level);
 }
 
@@ -352,6 +359,9 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+   if(thread_current()!=idle_thread && new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
+       thread_yield();
+       
 }
 
 /* Returns the current thread's priority. */
@@ -501,10 +511,18 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
+  struct list_elem* e;//highist priority
+  struct thread* nth;
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  {
+      e = list_min(&ready_list, th_less, NULL);
+      nth = list_entry(e, struct thread, elem);
+      list_remove(e);
+      return nth;
+//return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page

@@ -1,6 +1,6 @@
 #include "list.h"
 #include "../debug.h"
-
+//#include "../threads/thread.h"
 /* Our doubly linked lists have two header elements: the "head"
    just before the first element and the "tail" just after the
    last element.  The `prev' link of the front header is null, as
@@ -408,7 +408,7 @@ list_sort (struct list *list, list_less_func *less, void *aux)
 
   ASSERT (list != NULL);
   ASSERT (less != NULL);
-
+   // printf("sort called\n");
   /* Pass over the list repeatedly, merging adjacent runs of
      nondecreasing elements, until only one run is left. */
   do
@@ -451,7 +451,7 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
   ASSERT (list != NULL);
   ASSERT (elem != NULL);
   ASSERT (less != NULL);
-
+   // printf("insert called\n");
   for (e = list_begin (list); e != list_end (list); e = list_next (e))
     if (less (elem, e, aux))
       break;
