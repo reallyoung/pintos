@@ -93,6 +93,13 @@ bool th_less(const struct list_elem *a, const struct list_elem *b, void* aux UNU
     return t1->priority > t2->priority;
 }
 
+void thread_preemption(void){
+    enum intr_level old_level = intr_disable ();
+ if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
+    thread_yield();
+ intr_set_level(old_level);
+}
+
 void
 thread_init (void) 
 {
@@ -212,12 +219,14 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+  
+
 
   intr_set_level (old_level);
 
   /* Add to run queue. */
   thread_unblock (t);
-
+    thread_preemption();
   return tid;
 }
 
@@ -259,8 +268,8 @@ thread_unblock (struct thread *t)
  // list_sort(&ready_list, th_less, NULL);
   list_insert_ordered(&ready_list, &t->elem, th_less, NULL);
   t->status = THREAD_READY;
-  if(thread_current()!=idle_thread  && thread_current()->priority < t->priority )
-    thread_yield();
+//  if(thread_current()!=idle_thread  && thread_current()->priority < t->priority )
+  //  thread_yield();
 
   intr_set_level (old_level);
 }
@@ -358,10 +367,11 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-   if(thread_current()!=idle_thread && new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
+    enum intr_level old_level = intr_disable ();
+    thread_current ()->priority = new_priority;
+   if(new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
        thread_yield();
-       
+    intr_set_level(old_level);
 }
 
 /* Returns the current thread's priority. */
@@ -486,6 +496,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->bass_priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

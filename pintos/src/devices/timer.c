@@ -57,18 +57,23 @@ static void mysleep(int64_t time, struct thread * th){
 static void mywakeup(){
     struct sleep_thread* temp;
     struct list_elem *e;
-    enum intr_level old_level = intr_disable ();
+    //enum intr_level old_level = intr_disable ();
+    int p=0;
     e = list_begin(&sleep_q);
     for(;e != list_end(&sleep_q);e = list_next(e))
     {
         temp = list_entry (e, struct sleep_thread, elem);
         if(temp->wakeuptime <= timer_ticks()){
             thread_unblock(temp->th);
+            //thread_preemption();
+            p=1;
             temp = list_remove(&(temp->elem));
             continue;
         }
     }
-    intr_set_level(old_level);
+    if(p==1)
+        intr_yield_on_return();
+    //intr_set_level(old_level);
 }
 
 void
