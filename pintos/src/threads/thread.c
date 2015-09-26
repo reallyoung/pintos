@@ -99,6 +99,12 @@ void thread_preemption(void){
     thread_yield();
  intr_set_level(old_level);
 }
+//because of odd error
+bool lock_less2(const struct list_elem *a, const struct list_elem *    b, void* aux UNUSED){
+     struct lock* l1 =list_entry(a,struct lock, elem);
+     struct lock* l2 =list_entry(b,struct lock, elem);
+     return l1->lock_priority > l2->lock_priority;
+ }
 
 void
 thread_init (void) 
@@ -368,7 +374,22 @@ void
 thread_set_priority (int new_priority) 
 {
     enum intr_level old_level = intr_disable ();
+    struct list_elem* e;
+    struct lock* max_lock;
+    int max_pri=0;
+    thread_current ()->bass_priority = new_priority;
     thread_current ()->priority = new_priority;
+
+    if(!list_empty(&thread_current()->lock_list))
+    {
+        e= list_min(&thread_current()->lock_list, lock_less2,NULL);
+        max_lock = list_entry(e, struct lock, elem);
+        max_pri = max_lock->lock_priority;
+    }
+    
+    if(new_priority < max_pri)
+        thread_current()->priority = max_pri;
+
     if(thread_current()->waiting_lock)
         cal_lock_pri(thread_current()->waiting_lock);
     if(new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
