@@ -492,7 +492,7 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
-
+  
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
@@ -500,6 +500,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->bass_priority = priority;
   t->waiting_lock=NULL;
+  list_init(&t->lock_list);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

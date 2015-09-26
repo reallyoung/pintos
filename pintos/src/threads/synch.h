@@ -24,6 +24,7 @@ struct lock
     struct semaphore semaphore; /* Binary semaphore controlling access. */
     int lock_priority;
     int chain;
+    struct list_elem elem;
   };
 
 void lock_init (struct lock *);
@@ -42,8 +43,10 @@ void cond_init (struct condition *);
 void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
-
+//bool lock_less(const struct list_elem *a, const struct list_elem *b, void    * aux UNUSED);
 void cal_lock_pri(struct lock * lock);
+
+
 /* Optimization barrier.
 
    The compiler will not reorder operations across an
