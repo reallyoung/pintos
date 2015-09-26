@@ -472,12 +472,11 @@ void mlfqs_update_priority(struct thread* th)
     //                   a         b
     int new_priority = int_to_f(PRI_MAX);
     int a, b;
-    a = int_to_f(th->recent_cpu);
-    a = div_i(a,4);
-    b = int_to_f(th->nice);
-    b = mul_i(b, 2);
+    //a = int_to_f(th->recent_cpu);
+    a = div_i(th->recent_cpu,4);
+    b = 2 * th->nice;
     new_priority = sub_f(new_priority,a);
-    new_priority = sub_f(new_priority,b);
+    new_priority = sub_i(new_priority,b);
     new_priority = f_to_int_near(new_priority);
     if(new_priority > PRI_MAX)
         th->priority = PRI_MAX;
@@ -485,6 +484,8 @@ void mlfqs_update_priority(struct thread* th)
         th->priority = PRI_MIN;
     else
         th->priority = new_priority;
+    
+    //thread_preemption();
 }
 
 void mlfqs_cal_recent_cpu(struct thread* th)
@@ -500,8 +501,8 @@ void mlfqs_cal_recent_cpu(struct thread* th)
     b = add_i(a,1);
     c = div_f(a,b);
     c = mul_f(c,th->recent_cpu);
-    d = int_to_f(th->nice);
-    th->recent_cpu = add_f(c,d);
+    //d = int_to_f(th->nice);
+    th->recent_cpu = add_i(c,th->nice);
 
 }
 

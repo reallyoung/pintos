@@ -1,4 +1,4 @@
-#define frac (1 << 14)
+#define frac (1 << 16)
 
 int int_to_f(int i)
 {
