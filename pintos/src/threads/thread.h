@@ -91,6 +91,8 @@ struct thread
     int bass_priority;
     struct lock* waiting_lock;
     struct list lock_list;
+    int recent_cpu;
+    int nice;
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -142,5 +144,11 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 //my functioins
 bool th_less(const struct list_elem *a, const struct list_elem *b, void* aux UNUSED);
-void thread_preemption();
+void thread_preemption(void);
+int load_avg;
+void mlfqs_increment(void);
+void mlfqs_load_avg(void);
+void mlfqs_update_priority(struct thread* th);
+void mlfqs_cal_recent_cpu(struct thread* th);
+void mlfqs_recalculation(void);
 #endif /* threads/thread.h */

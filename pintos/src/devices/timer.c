@@ -223,6 +223,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  if(thread_mlfqs)
+  {
+      mlfqs_increment();
+      if(ticks % TIMER_FREQ == 0)
+        mlfqs_recalculation();
+      if(ticks % 4 == 0)
+        mlfqs_update_priority(thread_current());
+
+  }
+
   mywakeup();
 }
 
