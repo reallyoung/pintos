@@ -42,6 +42,46 @@
    - up or "V": increment the value (and wake up one waiting
      thread, if any). */
 
+void cal_lock_pri(struct lock* lock)
+{
+  int old_priority;
+  int new_priority;
+  //int temp;
+  struct list_elem *e;
+  struct thread* th;
+  enum intr_level old_level;
+  ASSERT (lock != NULL);
+  //ASSERT (!lock_held_by_current_thread (lock));
+  if(lock->holder == NULL)
+    return;
+
+  if(lock -> chain == 1)
+  {
+      lock -> chain = 0;
+      return;
+  }
+  old_level = intr_disable ();
+
+  lock-> chain =1;
+  old_priority = lock->holder->priority;
+  //find new_priority
+  e = list_min (&(lock->semaphore.waiters), th_less, NULL);
+  th = list_entry (e, struct thread, elem);
+  new_priority = th->priority;
+  lock->lock_priority = new_priority;
+
+  if(new_priority > old_priority ||
+          (lock->holder->bass_priority < new_priority && old_priority != new_priority))
+  {
+    lock->holder->priority = new_priority;
+    if(lock->holder->waiting_lock)
+        cal_lock_pri(lock->holder->waiting_lock);
+  }
+  
+  lock->chain =0;
+  intr_set_level (old_level);
+
+}
 
 void
 sema_init (struct semaphore *sema, unsigned value) 
@@ -117,9 +157,12 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
+  if (!list_empty (&sema->waiters))
+  {
+    list_sort(&sema->waiters, th_less, NULL);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+                struct thread, elem));
+  }
   //thread_preemption();
   sema->value++;
   thread_preemption();
@@ -182,7 +225,8 @@ void
 lock_init (struct lock *lock)
 {
   ASSERT (lock != NULL);
-
+  lock->chain=0;
+  lock->lock_priority=0;
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
 }
@@ -202,7 +246,31 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  sema_down (&lock->semaphore);
+  //sema_down (&lock->semaphore);
+  //sema_down code
+enum intr_level old_level;
+struct semaphore* sema;
+sema = &(lock->semaphore); 
+ ASSERT (sema != NULL);
+ ASSERT (!intr_context ());
+      
+ old_level = intr_disable ();
+ while (sema->value == 0)
+ {
+//    printf("%s is inserting\n",thread_current()->name);
+    thread_current()->waiting_lock = lock;
+    list_insert_ordered(&sema->waiters, &thread_current()->elem,     th_less, NULL);
+    cal_lock_pri(lock);
+    thread_block ();
+  //  printf("%s got lock\n",thread_current()->name);
+ }
+
+   thread_current()->waiting_lock = NULL;
+
+   sema->value--;
+   intr_set_level (old_level);
+
+
   lock->holder = thread_current ();
 }
 
@@ -236,9 +304,33 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+    int temp=0;
   lock->holder = NULL;
-  sema_up (&lock->semaphore);
+ // sema_up (&lock->semaphore);
+ struct semaphore * sema = &lock->semaphore;
+ struct thread* th = NULL; 
+ enum intr_level old_level;
+ ASSERT (sema != NULL);
+  old_level = intr_disable ();
+ if (!list_empty (&sema->waiters))
+ { 
+     temp =1;
+     list_sort(&sema->waiters, th_less, NULL);
+
+     th = list_entry (list_begin (&sema->waiters),
+             struct thread, elem);
+     thread_unblock (list_entry (list_pop_front (&sema->waiters),
+          struct thread, elem));
+    // printf("relese th=%s pri=%d, base=%d\n",th->name,th->priority, th->bass_priority);
+     thread_current()->priority = thread_current()->bass_priority;
+ }
+ sema->value++;
+
+// if (temp)
+  //   printf("be pre cur = %s\n", thread_name());
+ thread_preemption();
+ intr_set_level (old_level);
+
 }
 
 /* Returns true if the current thread holds LOCK, false

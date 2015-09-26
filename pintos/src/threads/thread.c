@@ -369,7 +369,9 @@ thread_set_priority (int new_priority)
 {
     enum intr_level old_level = intr_disable ();
     thread_current ()->priority = new_priority;
-   if(new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
+    if(thread_current()->waiting_lock)
+        cal_lock_pri(thread_current()->waiting_lock);
+    if(new_priority < list_entry(list_min (&ready_list, th_less, NULL), struct thread, elem)->priority)
        thread_yield();
     intr_set_level(old_level);
 }
@@ -497,6 +499,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->bass_priority = priority;
+  t->waiting_lock=NULL;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
@@ -603,6 +606,8 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+  //printf("schedule cur %s, pri= %d\n nxt %s, pri= %d \n",
+    //      cur->name,cur->priority,next->name,next->priority);
 }
 
 /* Returns a tid to use for a new thread. */
