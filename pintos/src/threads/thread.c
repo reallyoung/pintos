@@ -377,6 +377,8 @@ thread_set_priority (int new_priority)
     struct list_elem* e;
     struct lock* max_lock;
     int max_pri=0;
+    if(thread_mlfqs)
+        return;
     thread_current ()->bass_priority = new_priority;
     thread_current ()->priority = new_priority;
 

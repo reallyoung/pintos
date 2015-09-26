@@ -57,6 +57,8 @@ void cal_lock_pri(struct lock* lock)
   enum intr_level old_level;
   ASSERT (lock != NULL);
   //ASSERT (!lock_held_by_current_thread (lock));
+  if(thread_mlfqs)
+      return;
   if(lock->holder == NULL)
     return;
 
@@ -340,12 +342,14 @@ list_remove(&lock->elem);
      }
      else
         max_pri = 0;
-    
+if(!thread_mlfqs)
+{
      if(thread_current()->bass_priority > max_pri)
-        thread_current()->priority = thread_current()->bass_priority;
+    thread_current()->priority = thread_current()->bass_priority;
      else
          thread_current()->priority = max_pri;
- }
+} 
+}
  sema->value++;
 
 // if (temp)
