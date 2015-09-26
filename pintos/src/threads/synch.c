@@ -373,6 +373,28 @@ struct semaphore_elem
     struct semaphore semaphore;         /* This semaphore. */
   };
 
+bool cond_less(const struct list_elem *a, const struct list_elem *b, void* aux UNUSED)
+{
+struct semaphore_elem *se1 = list_entry(a, struct semaphore_elem, elem);
+struct semaphore_elem *se2 = list_entry(b, struct semaphore_elem, elem);
+struct thread *t1;
+struct thread *t2;
+
+if (list_empty(&se1->semaphore.waiters))
+    return false;
+    
+if (list_empty(&se2->semaphore.waiters))
+    return true;
+    
+list_sort(&se1->semaphore.waiters, th_less, NULL);
+list_sort(&se2->semaphore.waiters, th_less, NULL);
+t1 = list_entry(list_front(&se1->semaphore.waiters), struct thread, elem);
+t2 = list_entry(list_front(&se2->semaphore.waiters), struct thread, elem);
+
+return t1->priority > t2->priority;
+}
+
+
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
    code to receive the signal and act upon it. */
@@ -428,6 +450,7 @@ cond_wait (struct condition *cond, struct lock *lock)
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to signal a condition variable within an
    interrupt handler. */
+
 void
 cond_signal (struct condition *cond, struct lock *lock UNUSED) 
 {
@@ -437,8 +460,12 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock_held_by_current_thread (lock));
 
   if (!list_empty (&cond->waiters)) 
-    sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
+  {  
+      //sort cond->waiters
+        list_sort(&cond->waiters, cond_less, NULL);
+      sema_up (&list_entry (list_pop_front (&cond->waiters),
+                        struct semaphore_elem, elem)->semaphore);
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
